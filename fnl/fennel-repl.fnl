@@ -1,8 +1,6 @@
 (local fennel (require :fennel))
 
-; Need to use module-level reference since it's not possible to use a closure
-; with prompt_setcallback
-(var coro nil)
+(local state {:n 1})
 
 ; Replace this with a Lua function when Lua funcrefs can be used in callbacks
 ; (see neovim/neovim#14909)
@@ -11,10 +9,9 @@ function! FennelReplCallback(text)
     call luaeval('require(\"fennel-repl\").callback(_A[1], _A[2])', [bufnr(), a:text])
 endfunction")
 
-(fn create-window [mods]
-  (let [bufnr (vim.api.nvim_create_buf false true)]
-    (vim.api.nvim_command (.. mods " new"))
-    (vim.api.nvim_win_set_buf 0 bufnr)
+(fn create-buf []
+  (let [bufnr (vim.api.nvim_create_buf true true)]
+    (vim.api.nvim_buf_set_name bufnr (: "fennel-repl.%d" :format state.n))
     (vim.api.nvim_buf_set_option bufnr :buftype :prompt)
     (vim.api.nvim_buf_set_option bufnr :filetype :fennel)
     (vim.api.nvim_buf_set_option bufnr :complete ".")
@@ -32,8 +29,18 @@ endfunction")
 
     (vim.fn.prompt_setcallback bufnr :FennelReplCallback)
     (vim.fn.prompt_setprompt bufnr ">> ")
-    (vim.api.nvim_command "startinsert")
+    (vim.api.nvim_command (: "autocmd BufEnter <buffer=%d> startinsert" :format bufnr))
     bufnr))
+
+(fn create-win [bufnr mods]
+  (vim.api.nvim_command (: "%s sbuffer %d" :format mods bufnr))
+  (vim.api.nvim_get_current_win))
+
+(fn find-repl-win [bufnr]
+  (. (icollect [_ win (ipairs (vim.api.nvim_list_wins))]
+       (when (= (vim.api.nvim_win_get_buf win) bufnr)
+         win))
+     1))
 
 (fn close [bufnr]
   (let [[win] (icollect [_ v (ipairs (vim.api.nvim_list_wins))]
@@ -41,7 +48,9 @@ endfunction")
                   v))]
     (vim.api.nvim_buf_set_option bufnr :modified false)
     (vim.api.nvim_buf_set_lines bufnr -1 -1 true ["[Process exited]"])
-    (vim.api.nvim_win_close win false)))
+    (vim.api.nvim_win_close win false)
+    (set state.n (+ state.n 1))
+    (set state.bufnr nil)))
 
 (fn read-chunk [parser-state]
   (let [input (coroutine.yield parser-state.stack-size)]
@@ -71,20 +80,23 @@ endfunction")
     (vim.F.unpack_len res)))
 
 (fn callback [bufnr text]
-  (let [(ok? stack-size out) (coroutine.resume coro text)]
-    (if (and ok? (= (coroutine.status coro) "suspended"))
+  (let [(ok? stack-size out) (coroutine.resume state.coro text)]
+    (if (and ok? (= (coroutine.status state.coro) "suspended"))
         (do
           (->> (if (< 0 stack-size) ".." ">> ")
                (vim.fn.prompt_setprompt bufnr))
           (when (> 0 stack-size)
             (write bufnr out)
-            (coroutine.resume coro)))
+            (coroutine.resume state.coro)))
         (close bufnr))))
 
 (fn start [?mods]
-  (let [bufnr (create-window (or ?mods ""))
+  (let [bufnr (or state.bufnr (create-buf))
+        win (or (find-repl-win bufnr) (create-win bufnr (or ?mods "")))
         env {}
         fenv {}]
+    (set state.bufnr bufnr)
+    (vim.api.nvim_set_current_win win)
     ; We need two modified environments: one with a modified xpcall for
     ; fennel.repl and another for the actual code executed inside the REPL. The
     ; latter lets us redirect "print" to the REPL buffer
@@ -96,13 +108,13 @@ endfunction")
     (tset env :print #(write bufnr $... "\n"))
     (tset fenv :xpcall xpcall*)
     (let [repl (setfenv fennel.repl fenv)]
-      (set coro (coroutine.create #(repl {: env
-                                          :allowedGlobals false
-                                          :pp fennel.view
-                                          :readChunk read-chunk
-                                          :onValues on-values
-                                          :onError on-error})))
-      (coroutine.resume coro))))
+      (set state.coro (coroutine.create #(repl {: env
+                                                :allowedGlobals false
+                                                :pp fennel.view
+                                                :readChunk read-chunk
+                                                :onValues on-values
+                                                :onError on-error})))
+      (coroutine.resume state.coro))))
 
 {: start
  : callback}
