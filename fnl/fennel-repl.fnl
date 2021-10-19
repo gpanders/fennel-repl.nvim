@@ -26,16 +26,16 @@ endfunction")
   (vim.api.nvim_buf_set_option bufnr :buftype "")
   (vim.api.nvim_buf_set_lines bufnr -1 -1 true ["[Process exited]"]))
 
-(fn read-chunk []
-  (let [input (coroutine.yield true)]
+(fn read-chunk [parser-state]
+  (let [input (coroutine.yield parser-state.stack-size)]
     (and input (.. input "\n"))))
 
 (fn on-values [vals]
-  (coroutine.yield false (.. (table.concat vals "\t") "\n")))
+  (coroutine.yield -1 (.. (table.concat vals "\t") "\n")))
 
 (fn on-error [errtype err lua-source]
   (coroutine.yield
-    false
+    -1
     (match errtype
       "Runtime" (.. (fennel.traceback (tostring err) 4) "\n")
       _ (: "%s error: %s\n" :format errtype (tostring err)))))
@@ -54,12 +54,12 @@ endfunction")
     (vim.F.unpack_len res)))
 
 (fn callback [bufnr text]
-  (let [(ok? reading? out) (coroutine.resume coro text)]
+  (let [(ok? stack-size out) (coroutine.resume coro text)]
     (if (and ok? (= (coroutine.status coro) "suspended"))
         (do
-          (->> (if reading? ".." ">> ")
+          (->> (if (< 0 stack-size) ".." ">> ")
                (vim.fn.prompt_setprompt bufnr))
-          (when (not reading?)
+          (when (> 0 stack-size)
             (write bufnr out)
             (coroutine.resume coro)))
         (close bufnr))))

@@ -16,12 +16,12 @@ local function close(bufnr)
   vim.api.nvim_buf_set_option(bufnr, "buftype", "")
   return vim.api.nvim_buf_set_lines(bufnr, -1, -1, true, {"[Process exited]"})
 end
-local function read_chunk()
-  local input = coroutine.yield(true)
+local function read_chunk(parser_state)
+  local input = coroutine.yield(parser_state["stack-size"])
   return (input and (input .. "\n"))
 end
 local function on_values(vals)
-  return coroutine.yield(false, (table.concat(vals, "\9") .. "\n"))
+  return coroutine.yield(-1, (table.concat(vals, "\9") .. "\n"))
 end
 local function on_error(errtype, err, lua_source)
   local function _2_()
@@ -33,7 +33,7 @@ local function on_error(errtype, err, lua_source)
       return ("%s error: %s\n"):format(errtype, tostring(err))
     end
   end
-  return coroutine.yield(false, _2_())
+  return coroutine.yield(-1, _2_())
 end
 local function write(bufnr, ...)
   local text = string.gsub(table.concat({...}, " "), "\\n", "\n")
@@ -48,17 +48,17 @@ local function xpcall_2a(f, err, ...)
   return vim.F.unpack_len(res)
 end
 local function callback(bufnr, text)
-  local ok_3f, reading_3f, out = coroutine.resume(coro, text)
+  local ok_3f, stack_size, out = coroutine.resume(coro, text)
   if (ok_3f and (coroutine.status(coro) == "suspended")) then
     local function _5_()
-      if reading_3f then
+      if (0 < stack_size) then
         return ".."
       else
         return ">> "
       end
     end
     vim.fn.prompt_setprompt(bufnr, _5_())
-    if not reading_3f then
+    if (0 > stack_size) then
       write(bufnr, out)
       return coroutine.resume(coro)
     end
