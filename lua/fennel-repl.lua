@@ -7,6 +7,18 @@ local function create_window(mods)
   vim.api.nvim_win_set_buf(0, bufnr)
   vim.api.nvim_buf_set_option(bufnr, "buftype", "prompt")
   vim.api.nvim_buf_set_option(bufnr, "filetype", "fennel")
+  vim.api.nvim_buf_set_option(bufnr, "complete", ".")
+  local function imap(lhs, rhs, _3fopts)
+    local opts = {noremap = true}
+    for k, v in pairs((_3fopts or {})) do
+      opts[k] = v
+    end
+    return vim.api.nvim_buf_set_keymap(bufnr, "i", lhs, rhs, opts)
+  end
+  imap("<C-P>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true})
+  imap("<Up>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true})
+  imap("<C-N>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true})
+  imap("<Down>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true})
   vim.fn.prompt_setcallback(bufnr, "FennelReplCallback")
   vim.fn.prompt_setprompt(bufnr, ">> ")
   vim.api.nvim_command("startinsert")

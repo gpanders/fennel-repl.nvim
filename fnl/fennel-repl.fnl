@@ -17,6 +17,19 @@ endfunction")
     (vim.api.nvim_win_set_buf 0 bufnr)
     (vim.api.nvim_buf_set_option bufnr :buftype :prompt)
     (vim.api.nvim_buf_set_option bufnr :filetype :fennel)
+    (vim.api.nvim_buf_set_option bufnr :complete ".")
+
+    (fn imap [lhs rhs ?opts]
+      (let [opts {:noremap true}]
+        (each [k v (pairs (or ?opts {}))]
+          (tset opts k v))
+        (vim.api.nvim_buf_set_keymap bufnr :i lhs rhs opts)))
+
+    (imap "<C-P>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'" {:expr true})
+    (imap "<Up>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'" {:expr true})
+    (imap "<C-N>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'" {:expr true})
+    (imap "<Down>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'" {:expr true})
+
     (vim.fn.prompt_setcallback bufnr :FennelReplCallback)
     (vim.fn.prompt_setprompt bufnr ">> ")
     (vim.api.nvim_command "startinsert")
