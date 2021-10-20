@@ -93,7 +93,7 @@ local function start(_3fmods)
   fenv["xpcall"] = xpcall_2a
   local repl = setfenv(fennel.repl, fenv)
   local function _9_()
-    return repl({allowedGlobals = false, env = env, onError = on_error, onValues = on_values, readChunk = read_chunk})
+    return repl({allowedGlobals = false, env = env, onError = on_error, onValues = on_values, pp = fennel.view, readChunk = read_chunk})
   end
   coro = coroutine.create(_9_)
   return coroutine.resume(coro)

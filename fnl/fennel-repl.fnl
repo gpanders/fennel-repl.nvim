@@ -94,6 +94,7 @@ endfunction")
     (let [repl (setfenv fennel.repl fenv)]
       (set coro (coroutine.create #(repl {: env
                                           :allowedGlobals false
+                                          :pp fennel.view
                                           :readChunk read-chunk
                                           :onValues on-values
                                           :onError on-error})))
