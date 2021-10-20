@@ -12,8 +12,12 @@ use
 require("fennel-repl").start()
 ```
 
-in Lua. The `start()` function takes optional modifiers that dictate where the
-window is drawn (e.g. `vert`, `botright`, etc.).
+in Lua. The `start()` function takes an optional `opts` table that accepts the
+following keys:
+
+- `mods`: modifier for window placement (e.g. "vert", "botright", etc.)
+- `height`: height of window in rows (if split horizontally)
+- `width`: width of window in columns (if split vertically)
 
 ## License
 

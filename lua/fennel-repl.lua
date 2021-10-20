@@ -23,43 +23,50 @@ local function create_buf()
   vim.api.nvim_command(("autocmd BufEnter <buffer=%d> startinsert"):format(bufnr))
   return bufnr
 end
-local function create_win(bufnr, mods)
+local function create_win(bufnr, opts)
+  local mods = (opts.mods or "")
   vim.api.nvim_command(("%s sbuffer %d"):format(mods, bufnr))
+  if opts.height then
+    vim.api.nvim_win_set_height(0, opts.height)
+  end
+  if opts.width then
+    vim.api.nvim_win_set_width(0, opts.width)
+  end
   return vim.api.nvim_get_current_win()
 end
 local function find_repl_win(bufnr)
-  local _1_
+  local _3_
   do
     local tbl_12_auto = {}
     for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local _2_
+      local _4_
       if (vim.api.nvim_win_get_buf(win) == bufnr) then
-        _2_ = win
+        _4_ = win
       else
-      _2_ = nil
+      _4_ = nil
       end
-      tbl_12_auto[(#tbl_12_auto + 1)] = _2_
+      tbl_12_auto[(#tbl_12_auto + 1)] = _4_
     end
-    _1_ = tbl_12_auto
+    _3_ = tbl_12_auto
   end
-  return (_1_)[1]
+  return (_3_)[1]
 end
 local function close(bufnr)
-  local function _5_()
+  local function _7_()
     local tbl_12_auto = {}
     for _, v in ipairs(vim.api.nvim_list_wins()) do
-      local _6_
+      local _8_
       if (vim.api.nvim_win_get_buf(v) == bufnr) then
-        _6_ = v
+        _8_ = v
       else
-      _6_ = nil
+      _8_ = nil
       end
-      tbl_12_auto[(#tbl_12_auto + 1)] = _6_
+      tbl_12_auto[(#tbl_12_auto + 1)] = _8_
     end
     return tbl_12_auto
   end
-  local _let_4_ = _5_()
-  local win = _let_4_[1]
+  local _let_6_ = _7_()
+  local win = _let_6_[1]
   vim.api.nvim_buf_set_lines(bufnr, -1, -1, true, {"[Process exited]"})
   vim.api.nvim_buf_set_option(bufnr, "buftype", "")
   vim.api.nvim_buf_set_option(bufnr, "modified", false)
@@ -77,16 +84,16 @@ local function on_values(vals)
   return coroutine.yield(-1, (table.concat(vals, "\9") .. "\n"))
 end
 local function on_error(errtype, err, lua_source)
-  local function _9_()
-    local _8_ = errtype
-    if (_8_ == "Runtime") then
+  local function _11_()
+    local _10_ = errtype
+    if (_10_ == "Runtime") then
       return (fennel.traceback(tostring(err), 4) .. "\n")
     else
-      local _ = _8_
+      local _ = _10_
       return ("%s error: %s\n"):format(errtype, tostring(err))
     end
   end
-  return coroutine.yield(-1, _9_())
+  return coroutine.yield(-1, _11_())
 end
 local function write(bufnr, ...)
   local text = string.gsub(table.concat({...}, " "), "\\n", "\n")
@@ -103,14 +110,14 @@ end
 local function callback(bufnr, text)
   local ok_3f, stack_size, out = coroutine.resume(state.coro, text)
   if (ok_3f and (coroutine.status(state.coro) == "suspended")) then
-    local function _12_()
+    local function _14_()
       if (0 < stack_size) then
         return ".."
       else
         return ">> "
       end
     end
-    vim.fn.prompt_setprompt(bufnr, _12_())
+    vim.fn.prompt_setprompt(bufnr, _14_())
     if (0 > stack_size) then
       write(bufnr, out)
       return coroutine.resume(state.coro)
@@ -119,9 +126,10 @@ local function callback(bufnr, text)
     return close(bufnr)
   end
 end
-local function start(_3fmods)
+local function start(_3fopts)
+  local opts = (_3fopts or {})
   local bufnr = (state.bufnr or create_buf())
-  local win = (find_repl_win(bufnr) or create_win(bufnr, (_3fmods or "")))
+  local win = (find_repl_win(bufnr) or create_win(bufnr, opts))
   local env = {}
   local fenv = {}
   state.bufnr = bufnr
@@ -130,16 +138,16 @@ local function start(_3fmods)
     env[k] = v
     fenv[k] = v
   end
-  local function _15_(...)
+  local function _17_(...)
     return write(bufnr, ..., "\n")
   end
-  env["print"] = _15_
+  env["print"] = _17_
   fenv["xpcall"] = xpcall_2a
   local repl = setfenv(fennel.repl, fenv)
-  local function _16_()
+  local function _18_()
     return repl({allowedGlobals = false, env = env, onError = on_error, onValues = on_values, pp = fennel.view, readChunk = read_chunk})
   end
-  state.coro = coroutine.create(_16_)
+  state.coro = coroutine.create(_18_)
   return coroutine.resume(state.coro)
 end
 return {callback = callback, start = start}

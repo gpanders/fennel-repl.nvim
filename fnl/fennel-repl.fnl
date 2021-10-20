@@ -32,9 +32,14 @@ endfunction")
     (vim.api.nvim_command (: "autocmd BufEnter <buffer=%d> startinsert" :format bufnr))
     bufnr))
 
-(fn create-win [bufnr mods]
-  (vim.api.nvim_command (: "%s sbuffer %d" :format mods bufnr))
-  (vim.api.nvim_get_current_win))
+(fn create-win [bufnr opts]
+  (let [mods (or opts.mods "")]
+    (vim.api.nvim_command (: "%s sbuffer %d" :format mods bufnr))
+    (when opts.height
+      (vim.api.nvim_win_set_height 0 opts.height))
+    (when opts.width
+      (vim.api.nvim_win_set_width 0 opts.width))
+    (vim.api.nvim_get_current_win)))
 
 (fn find-repl-win [bufnr]
   (. (icollect [_ win (ipairs (vim.api.nvim_list_wins))]
@@ -92,9 +97,10 @@ endfunction")
             (coroutine.resume state.coro)))
         (close bufnr))))
 
-(fn start [?mods]
-  (let [bufnr (or state.bufnr (create-buf))
-        win (or (find-repl-win bufnr) (create-win bufnr (or ?mods "")))
+(fn start [?opts]
+  (let [opts (or ?opts {})
+        bufnr (or state.bufnr (create-buf))
+        win (or (find-repl-win bufnr) (create-win bufnr opts))
         env {}
         fenv {}]
     (set state.bufnr bufnr)
