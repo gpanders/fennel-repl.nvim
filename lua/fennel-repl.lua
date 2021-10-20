@@ -25,8 +25,24 @@ local function create_window(mods)
   return bufnr
 end
 local function close(bufnr)
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "")
-  return vim.api.nvim_buf_set_lines(bufnr, -1, -1, true, {"[Process exited]"})
+  local function _2_()
+    local tbl_12_auto = {}
+    for _, v in ipairs(vim.api.nvim_list_wins()) do
+      local _3_
+      if (vim.api.nvim_win_get_buf(v) == bufnr) then
+        _3_ = v
+      else
+      _3_ = nil
+      end
+      tbl_12_auto[(#tbl_12_auto + 1)] = _3_
+    end
+    return tbl_12_auto
+  end
+  local _let_1_ = _2_()
+  local win = _let_1_[1]
+  vim.api.nvim_buf_set_option(bufnr, "modified", false)
+  vim.api.nvim_buf_set_lines(bufnr, -1, -1, true, {"[Process exited]"})
+  return vim.api.nvim_win_close(win, false)
 end
 local function read_chunk(parser_state)
   local input = coroutine.yield(parser_state["stack-size"])
@@ -36,16 +52,16 @@ local function on_values(vals)
   return coroutine.yield(-1, (table.concat(vals, "\9") .. "\n"))
 end
 local function on_error(errtype, err, lua_source)
-  local function _2_()
-    local _1_ = errtype
-    if (_1_ == "Runtime") then
+  local function _6_()
+    local _5_ = errtype
+    if (_5_ == "Runtime") then
       return (fennel.traceback(tostring(err), 4) .. "\n")
     else
-      local _ = _1_
+      local _ = _5_
       return ("%s error: %s\n"):format(errtype, tostring(err))
     end
   end
-  return coroutine.yield(-1, _2_())
+  return coroutine.yield(-1, _6_())
 end
 local function write(bufnr, ...)
   local text = string.gsub(table.concat({...}, " "), "\\n", "\n")
@@ -62,14 +78,14 @@ end
 local function callback(bufnr, text)
   local ok_3f, stack_size, out = coroutine.resume(coro, text)
   if (ok_3f and (coroutine.status(coro) == "suspended")) then
-    local function _5_()
+    local function _9_()
       if (0 < stack_size) then
         return ".."
       else
         return ">> "
       end
     end
-    vim.fn.prompt_setprompt(bufnr, _5_())
+    vim.fn.prompt_setprompt(bufnr, _9_())
     if (0 > stack_size) then
       write(bufnr, out)
       return coroutine.resume(coro)
@@ -86,16 +102,16 @@ local function start(_3fmods)
     env[k] = v
     fenv[k] = v
   end
-  local function _8_(...)
+  local function _12_(...)
     return write(bufnr, ..., "\n")
   end
-  env["print"] = _8_
+  env["print"] = _12_
   fenv["xpcall"] = xpcall_2a
   local repl = setfenv(fennel.repl, fenv)
-  local function _9_()
+  local function _13_()
     return repl({allowedGlobals = false, env = env, onError = on_error, onValues = on_values, pp = fennel.view, readChunk = read_chunk})
   end
-  coro = coroutine.create(_9_)
+  coro = coroutine.create(_13_)
   return coroutine.resume(coro)
 end
 return {callback = callback, start = start}
