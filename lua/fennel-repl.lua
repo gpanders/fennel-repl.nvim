@@ -60,8 +60,10 @@ local function close(bufnr)
   end
   local _let_4_ = _5_()
   local win = _let_4_[1]
-  vim.api.nvim_buf_set_option(bufnr, "modified", false)
   vim.api.nvim_buf_set_lines(bufnr, -1, -1, true, {"[Process exited]"})
+  vim.api.nvim_buf_set_option(bufnr, "buftype", "")
+  vim.api.nvim_buf_set_option(bufnr, "modified", false)
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
   vim.api.nvim_win_close(win, false)
   state.n = (state.n + 1)
   state.bufnr = nil

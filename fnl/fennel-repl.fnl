@@ -46,8 +46,10 @@ endfunction")
   (let [[win] (icollect [_ v (ipairs (vim.api.nvim_list_wins))]
                 (when (= (vim.api.nvim_win_get_buf v) bufnr)
                   v))]
-    (vim.api.nvim_buf_set_option bufnr :modified false)
     (vim.api.nvim_buf_set_lines bufnr -1 -1 true ["[Process exited]"])
+    (vim.api.nvim_buf_set_option bufnr :buftype "")
+    (vim.api.nvim_buf_set_option bufnr :modified false)
+    (vim.api.nvim_buf_set_option bufnr :modifiable false)
     (vim.api.nvim_win_close win false)
     (set state.n (+ state.n 1))
     (set state.bufnr nil)))
