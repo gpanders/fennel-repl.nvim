@@ -11,26 +11,22 @@ endfunction")
 
 (fn create-buf []
   (let [bufnr (vim.api.nvim_create_buf true true)]
-    (vim.api.nvim_buf_set_name bufnr (: "fennel-repl.%d" :format state.n))
-    (vim.api.nvim_buf_set_option bufnr :buftype :prompt)
-    (vim.api.nvim_buf_set_option bufnr :filetype :fennel)
-    (vim.api.nvim_buf_set_option bufnr :complete ".")
-
-    (fn imap [lhs rhs ?opts]
-      (let [opts {:noremap true}]
-        (each [k v (pairs (or ?opts {}))]
-          (tset opts k v))
-        (vim.api.nvim_buf_set_keymap bufnr :i lhs rhs opts)))
-
-    (imap "<C-P>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'" {:expr true})
-    (imap "<Up>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'" {:expr true})
-    (imap "<C-N>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'" {:expr true})
-    (imap "<Down>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'" {:expr true})
-
-    (vim.fn.prompt_setcallback bufnr :FennelReplCallback)
-    (vim.fn.prompt_setprompt bufnr ">> ")
-    (vim.api.nvim_command (: "autocmd BufEnter <buffer=%d> startinsert" :format bufnr))
-    bufnr))
+   (macro imap [bufnr lhs rhs]
+     (let [opts {:noremap true :expr true}]
+       `(vim.api.nvim_buf_set_keymap ,bufnr :i ,lhs ,rhs ,opts)))
+   (doto bufnr
+     (vim.api.nvim_buf_set_name (: "fennel-repl.%d" :format state.n))
+     (vim.api.nvim_buf_set_option :buftype :prompt)
+     (vim.api.nvim_buf_set_option :filetype :fennel)
+     (vim.api.nvim_buf_set_option :complete ".")
+     (imap "<C-P>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'")
+     (imap "<Up>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'")
+     (imap "<C-N>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'")
+     (imap "<Down>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'")
+     (vim.fn.prompt_setcallback :FennelReplCallback)
+     (vim.fn.prompt_setprompt ">> "))
+   (vim.api.nvim_command (: "autocmd BufEnter <buffer=%d> startinsert" :format bufnr))
+   bufnr))
 
 (fn create-win [bufnr opts]
   (let [mods (or opts.mods "")]
@@ -48,13 +44,12 @@ endfunction")
      1))
 
 (fn close [bufnr]
-  (let [[win] (icollect [_ v (ipairs (vim.api.nvim_list_wins))]
-                (when (= (vim.api.nvim_win_get_buf v) bufnr)
-                  v))]
-    (vim.api.nvim_buf_set_lines bufnr -1 -1 true ["[Process exited]"])
-    (vim.api.nvim_buf_set_option bufnr :buftype "")
-    (vim.api.nvim_buf_set_option bufnr :modified false)
-    (vim.api.nvim_buf_set_option bufnr :modifiable false)
+  (let [win (find-repl-win bufnr)]
+    (doto bufnr
+      (vim.api.nvim_buf_set_lines -1 -1 true ["[Process exited]"])
+      (vim.api.nvim_buf_set_option :buftype "")
+      (vim.api.nvim_buf_set_option :modified false)
+      (vim.api.nvim_buf_set_option :modifiable false))
     (vim.api.nvim_win_close win false)
     (set state.n (+ state.n 1))
     (set state.bufnr nil)))

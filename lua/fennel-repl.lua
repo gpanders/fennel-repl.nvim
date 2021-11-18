@@ -3,23 +3,19 @@ local state = {n = 1}
 vim.cmd("\nfunction! FennelReplCallback(text)\n    call luaeval('require(\"fennel-repl\").callback(_A[1], _A[2])', [bufnr(), a:text])\nendfunction")
 local function create_buf()
   local bufnr = vim.api.nvim_create_buf(true, true)
-  vim.api.nvim_buf_set_name(bufnr, ("fennel-repl.%d"):format(state.n))
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "prompt")
-  vim.api.nvim_buf_set_option(bufnr, "filetype", "fennel")
-  vim.api.nvim_buf_set_option(bufnr, "complete", ".")
-  local function imap(lhs, rhs, _3fopts)
-    local opts = {noremap = true}
-    for k, v in pairs((_3fopts or {})) do
-      opts[k] = v
-    end
-    return vim.api.nvim_buf_set_keymap(bufnr, "i", lhs, rhs, opts)
+  do
+    local _1_ = bufnr
+    vim.api.nvim_buf_set_name(_1_, ("fennel-repl.%d"):format(state.n))
+    vim.api.nvim_buf_set_option(_1_, "buftype", "prompt")
+    vim.api.nvim_buf_set_option(_1_, "filetype", "fennel")
+    vim.api.nvim_buf_set_option(_1_, "complete", ".")
+    vim.api.nvim_buf_set_keymap(_1_, "i", "<C-P>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    vim.api.nvim_buf_set_keymap(_1_, "i", "<Up>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    vim.api.nvim_buf_set_keymap(_1_, "i", "<C-N>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    vim.api.nvim_buf_set_keymap(_1_, "i", "<Down>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    vim.fn.prompt_setcallback(_1_, "FennelReplCallback")
+    vim.fn.prompt_setprompt(_1_, ">> ")
   end
-  imap("<C-P>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true})
-  imap("<Up>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true})
-  imap("<C-N>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true})
-  imap("<Down>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true})
-  vim.fn.prompt_setcallback(bufnr, "FennelReplCallback")
-  vim.fn.prompt_setprompt(bufnr, ">> ")
   vim.api.nvim_command(("autocmd BufEnter <buffer=%d> startinsert"):format(bufnr))
   return bufnr
 end
@@ -35,42 +31,31 @@ local function create_win(bufnr, opts)
   return vim.api.nvim_get_current_win()
 end
 local function find_repl_win(bufnr)
-  local _3_
+  local _4_
   do
     local tbl_12_auto = {}
     for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local _4_
+      local _5_
       if (vim.api.nvim_win_get_buf(win) == bufnr) then
-        _4_ = win
+        _5_ = win
       else
-      _4_ = nil
+      _5_ = nil
       end
-      tbl_12_auto[(#tbl_12_auto + 1)] = _4_
+      tbl_12_auto[(#tbl_12_auto + 1)] = _5_
     end
-    _3_ = tbl_12_auto
+    _4_ = tbl_12_auto
   end
-  return (_3_)[1]
+  return (_4_)[1]
 end
 local function close(bufnr)
-  local function _7_()
-    local tbl_12_auto = {}
-    for _, v in ipairs(vim.api.nvim_list_wins()) do
-      local _8_
-      if (vim.api.nvim_win_get_buf(v) == bufnr) then
-        _8_ = v
-      else
-      _8_ = nil
-      end
-      tbl_12_auto[(#tbl_12_auto + 1)] = _8_
-    end
-    return tbl_12_auto
+  local win = find_repl_win(bufnr)
+  do
+    local _7_ = bufnr
+    vim.api.nvim_buf_set_lines(_7_, -1, -1, true, {"[Process exited]"})
+    vim.api.nvim_buf_set_option(_7_, "buftype", "")
+    vim.api.nvim_buf_set_option(_7_, "modified", false)
+    vim.api.nvim_buf_set_option(_7_, "modifiable", false)
   end
-  local _let_6_ = _7_()
-  local win = _let_6_[1]
-  vim.api.nvim_buf_set_lines(bufnr, -1, -1, true, {"[Process exited]"})
-  vim.api.nvim_buf_set_option(bufnr, "buftype", "")
-  vim.api.nvim_buf_set_option(bufnr, "modified", false)
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
   vim.api.nvim_win_close(win, false)
   state.n = (state.n + 1)
   state.bufnr = nil
@@ -84,16 +69,16 @@ local function on_values(vals)
   return coroutine.yield(-1, (table.concat(vals, "\9") .. "\n"))
 end
 local function on_error(errtype, err, lua_source)
-  local function _11_()
-    local _10_ = errtype
-    if (_10_ == "Runtime") then
+  local function _9_()
+    local _8_ = errtype
+    if (_8_ == "Runtime") then
       return (fennel.traceback(tostring(err), 4) .. "\n")
     else
-      local _ = _10_
+      local _ = _8_
       return ("%s error: %s\n"):format(errtype, tostring(err))
     end
   end
-  return coroutine.yield(-1, _11_())
+  return coroutine.yield(-1, _9_())
 end
 local function write(bufnr, ...)
   local text = string.gsub(table.concat({...}, " "), "\\n", "\n")
@@ -110,14 +95,14 @@ end
 local function callback(bufnr, text)
   local ok_3f, stack_size, out = coroutine.resume(state.coro, text)
   if (ok_3f and (coroutine.status(state.coro) == "suspended")) then
-    local function _14_()
+    local function _12_()
       if (0 < stack_size) then
         return ".."
       else
         return ">> "
       end
     end
-    vim.fn.prompt_setprompt(bufnr, _14_())
+    vim.fn.prompt_setprompt(bufnr, _12_())
     if (0 > stack_size) then
       write(bufnr, out)
       return coroutine.resume(state.coro)
@@ -138,16 +123,16 @@ local function start(_3fopts)
     env[k] = v
     fenv[k] = v
   end
-  local function _17_(...)
+  local function _15_(...)
     return write(bufnr, ..., "\n")
   end
-  env["print"] = _17_
+  env["print"] = _15_
   fenv["xpcall"] = xpcall_2a
   local repl = setfenv(fennel.repl, fenv)
-  local function _18_()
+  local function _16_()
     return repl({allowedGlobals = false, env = env, onError = on_error, onValues = on_values, pp = fennel.view, readChunk = read_chunk})
   end
-  state.coro = coroutine.create(_18_)
+  state.coro = coroutine.create(_16_)
   return coroutine.resume(state.coro)
 end
 return {callback = callback, start = start}
