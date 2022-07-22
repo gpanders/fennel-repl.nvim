@@ -24,26 +24,33 @@ local function create_win(bufnr, opts)
   vim.api.nvim_command(("%s sbuffer %d"):format(mods, bufnr))
   if opts.height then
     vim.api.nvim_win_set_height(0, opts.height)
+  else
   end
   if opts.width then
     vim.api.nvim_win_set_width(0, opts.width)
+  else
   end
   return vim.api.nvim_get_current_win()
 end
 local function find_repl_win(bufnr)
   local _4_
   do
-    local tbl_12_auto = {}
+    local tbl_15_auto = {}
+    local i_16_auto = #tbl_15_auto
     for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local _5_
+      local val_17_auto
       if (vim.api.nvim_win_get_buf(win) == bufnr) then
-        _5_ = win
+        val_17_auto = win
       else
-      _5_ = nil
+        val_17_auto = nil
       end
-      tbl_12_auto[(#tbl_12_auto + 1)] = _5_
+      if (nil ~= val_17_auto) then
+        i_16_auto = (i_16_auto + 1)
+        do end (tbl_15_auto)[i_16_auto] = val_17_auto
+      else
+      end
     end
-    _4_ = tbl_12_auto
+    _4_ = tbl_15_auto
   end
   return (_4_)[1]
 end
@@ -66,16 +73,18 @@ local function read_chunk(parser_state)
   return (input and (input .. "\n"))
 end
 local function on_values(vals)
-  return coroutine.yield(-1, (table.concat(vals, "\9") .. "\n"))
+  return coroutine.yield(-1, (table.concat(vals, "\t") .. "\n"))
 end
 local function on_error(errtype, err, lua_source)
   local function _9_()
     local _8_ = errtype
     if (_8_ == "Runtime") then
       return (fennel.traceback(tostring(err), 4) .. "\n")
-    else
+    elseif true then
       local _ = _8_
       return ("%s error: %s\n"):format(errtype, tostring(err))
+    else
+      return nil
     end
   end
   return coroutine.yield(-1, _9_())
@@ -89,6 +98,7 @@ local function xpcall_2a(f, err, ...)
   local res = vim.F.pack_len(pcall(f))
   if not res[1] then
     res[2] = err(res[2])
+  else
   end
   return vim.F.unpack_len(res)
 end
@@ -106,6 +116,8 @@ local function callback(bufnr, text)
     if (0 > stack_size) then
       write(bufnr, out)
       return coroutine.resume(state.coro)
+    else
+      return nil
     end
   else
     return close(bufnr)
@@ -113,26 +125,31 @@ local function callback(bufnr, text)
 end
 local function start(_3fopts)
   local opts = (_3fopts or {})
+  local init_repl_3f = (nil == state.bufnr)
   local bufnr = (state.bufnr or create_buf())
   local win = (find_repl_win(bufnr) or create_win(bufnr, opts))
   local env = {}
   local fenv = {}
   state.bufnr = bufnr
   vim.api.nvim_set_current_win(win)
-  for k, v in pairs(getfenv(0)) do
-    env[k] = v
-    fenv[k] = v
+  if init_repl_3f then
+    for k, v in pairs(getfenv(0)) do
+      env[k] = v
+      fenv[k] = v
+    end
+    local function _15_(...)
+      return write(bufnr, ..., "\n")
+    end
+    env["print"] = _15_
+    fenv["xpcall"] = xpcall_2a
+    local repl = setfenv(fennel.repl, fenv)
+    local function _16_()
+      return repl({env = env, allowedGlobals = false, pp = fennel.view, readChunk = read_chunk, onValues = on_values, onError = on_error})
+    end
+    state.coro = coroutine.create(_16_)
+    coroutine.resume(state.coro)
+  else
   end
-  local function _15_(...)
-    return write(bufnr, ..., "\n")
-  end
-  env["print"] = _15_
-  fenv["xpcall"] = xpcall_2a
-  local repl = setfenv(fennel.repl, fenv)
-  local function _16_()
-    return repl({allowedGlobals = false, env = env, onError = on_error, onValues = on_values, pp = fennel.view, readChunk = read_chunk})
-  end
-  state.coro = coroutine.create(_16_)
-  return coroutine.resume(state.coro)
+  return bufnr
 end
-return {callback = callback, start = start}
+return {start = start, callback = callback}
