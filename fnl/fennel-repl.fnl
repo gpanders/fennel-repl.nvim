@@ -92,7 +92,7 @@ endfunction")
             (coroutine.resume state.coro)))
         (close bufnr))))
 
-(fn start [?opts]
+(fn open [?opts]
   (let [opts (or ?opts {})
         init-repl? (= nil state.bufnr)
         bufnr (or state.bufnr (create-buf))
@@ -122,5 +122,10 @@ endfunction")
         (coroutine.resume state.coro)))
     bufnr))
 
+(fn start [...]
+  (vim.notify_once (debug.traceback "fennel-repl.nvim: start() is deprecated in favor of open() and will soon be removed" 2) vim.log.levels.WARN)
+  (open ...))
+
 {: start
+ : open
  : callback}

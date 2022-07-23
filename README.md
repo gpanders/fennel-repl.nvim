@@ -9,17 +9,17 @@ Use `:FennelRepl` to create a new split with a REPL. For more direct access,
 use
 
 ```lua
-require("fennel-repl").start()
+require("fennel-repl").open()
 ```
 
-in Lua. The `start()` function takes an optional `opts` table that accepts the
+in Lua. The `open()` function takes an optional `opts` table that accepts the
 following keys:
 
 - `mods`: modifier for window placement (e.g. "vert", "botright", etc.)
 - `height`: height of window in rows (if split horizontally)
 - `width`: width of window in columns (if split vertically)
 
-`start()` returns the buffer number of the repl buffer.
+`open()` returns the buffer number of the repl buffer.
 
 ## License
 

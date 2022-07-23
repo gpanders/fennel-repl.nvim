@@ -73,7 +73,7 @@ local function read_chunk(parser_state)
   return (input and (input .. "\n"))
 end
 local function on_values(vals)
-  return coroutine.yield(-1, (table.concat(vals, "\t") .. "\n"))
+  return coroutine.yield(-1, (table.concat(vals, "\9") .. "\n"))
 end
 local function on_error(errtype, err, lua_source)
   local function _9_()
@@ -123,7 +123,7 @@ local function callback(bufnr, text)
     return close(bufnr)
   end
 end
-local function start(_3fopts)
+local function open(_3fopts)
   local opts = (_3fopts or {})
   local init_repl_3f = (nil == state.bufnr)
   local bufnr = (state.bufnr or create_buf())
@@ -152,4 +152,8 @@ local function start(_3fopts)
   end
   return bufnr
 end
-return {start = start, callback = callback}
+local function start(...)
+  vim.notify_once(debug.traceback("fennel-repl.nvim: start() is deprecated in favor of open() and will soon be removed", 2), vim.log.levels.WARN)
+  return open(...)
+end
+return {start = start, open = open, callback = callback}
