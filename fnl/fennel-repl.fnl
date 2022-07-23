@@ -94,30 +94,33 @@ endfunction")
 
 (fn start [?opts]
   (let [opts (or ?opts {})
+        init-repl? (= nil state.bufnr)
         bufnr (or state.bufnr (create-buf))
         win (or (find-repl-win bufnr) (create-win bufnr opts))
         env {}
         fenv {}]
     (set state.bufnr bufnr)
     (vim.api.nvim_set_current_win win)
-    ; We need two modified environments: one with a modified xpcall for
-    ; fennel.repl and another for the actual code executed inside the REPL. The
-    ; latter lets us redirect "print" to the REPL buffer
-    (each [k v (pairs (getfenv 0))]
-      ; Start by making two copies of the global environment...
-      (tset env k v)
-      (tset fenv k v))
-    ; ...and then modifying each one appropriately
-    (tset env :print #(write bufnr $... "\n"))
-    (tset fenv :xpcall xpcall*)
-    (let [repl (setfenv fennel.repl fenv)]
-      (set state.coro (coroutine.create #(repl {: env
-                                                :allowedGlobals false
-                                                :pp fennel.view
-                                                :readChunk read-chunk
-                                                :onValues on-values
-                                                :onError on-error})))
-      (coroutine.resume state.coro))))
+    (when init-repl?
+      ; We need two modified environments: one with a modified xpcall for
+      ; fennel.repl and another for the actual code executed inside the REPL. The
+      ; latter lets us redirect "print" to the REPL buffer
+      (each [k v (pairs (getfenv 0))]
+        ; Start by making two copies of the global environment...
+        (tset env k v)
+        (tset fenv k v))
+      ; ...and then modifying each one appropriately
+      (tset env :print #(write bufnr $... "\n"))
+      (tset fenv :xpcall xpcall*)
+      (let [repl (setfenv fennel.repl fenv)]
+        (set state.coro (coroutine.create #(repl {: env
+                                                  :allowedGlobals false
+                                                  :pp fennel.view
+                                                  :readChunk read-chunk
+                                                  :onValues on-values
+                                                  :onError on-error})))
+        (coroutine.resume state.coro)))
+    bufnr))
 
 {: start
  : callback}

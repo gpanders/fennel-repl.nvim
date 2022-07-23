@@ -19,6 +19,8 @@ following keys:
 - `height`: height of window in rows (if split horizontally)
 - `width`: width of window in columns (if split vertically)
 
+`start()` returns the buffer number of the repl buffer.
+
 ## License
 
 MIT
