@@ -14,18 +14,18 @@ endfunction")
    (macro imap [bufnr lhs rhs]
      (let [opts {:noremap true :expr true}]
        `(vim.api.nvim_buf_set_keymap ,bufnr :i ,lhs ,rhs ,opts)))
+   (vim.api.nvim_command (: "autocmd BufEnter <buffer=%d> startinsert" :format bufnr))
    (doto bufnr
      (vim.api.nvim_buf_set_name (: "fennel-repl.%d" :format state.n))
      (vim.api.nvim_buf_set_option :buftype :prompt)
-     (vim.api.nvim_buf_set_option :filetype :fennel)
      (vim.api.nvim_buf_set_option :complete ".")
      (imap "<C-P>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'")
      (imap "<Up>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'")
      (imap "<C-N>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'")
      (imap "<Down>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'")
      (vim.fn.prompt_setcallback :FennelReplCallback)
-     (vim.fn.prompt_setprompt ">> "))
-   (vim.api.nvim_command (: "autocmd BufEnter <buffer=%d> startinsert" :format bufnr))
+     (vim.fn.prompt_setprompt ">> ")
+     (vim.api.nvim_buf_set_option :filetype :fennel))
    bufnr))
 
 (fn create-win [bufnr opts]

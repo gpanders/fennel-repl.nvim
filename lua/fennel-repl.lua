@@ -3,11 +3,11 @@ local state = {n = 1}
 vim.cmd("\nfunction! FennelReplCallback(text)\n    call luaeval('require(\"fennel-repl\").callback(_A[1], _A[2])', [bufnr(), a:text])\nendfunction")
 local function create_buf()
   local bufnr = vim.api.nvim_create_buf(true, true)
+  vim.api.nvim_command(("autocmd BufEnter <buffer=%d> startinsert"):format(bufnr))
   do
     local _1_ = bufnr
     vim.api.nvim_buf_set_name(_1_, ("fennel-repl.%d"):format(state.n))
     vim.api.nvim_buf_set_option(_1_, "buftype", "prompt")
-    vim.api.nvim_buf_set_option(_1_, "filetype", "fennel")
     vim.api.nvim_buf_set_option(_1_, "complete", ".")
     vim.api.nvim_buf_set_keymap(_1_, "i", "<C-P>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
     vim.api.nvim_buf_set_keymap(_1_, "i", "<Up>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
@@ -15,8 +15,8 @@ local function create_buf()
     vim.api.nvim_buf_set_keymap(_1_, "i", "<Down>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true, noremap = true})
     vim.fn.prompt_setcallback(_1_, "FennelReplCallback")
     vim.fn.prompt_setprompt(_1_, ">> ")
+    vim.api.nvim_buf_set_option(_1_, "filetype", "fennel")
   end
-  vim.api.nvim_command(("autocmd BufEnter <buffer=%d> startinsert"):format(bufnr))
   return bufnr
 end
 local function create_win(bufnr, opts)
