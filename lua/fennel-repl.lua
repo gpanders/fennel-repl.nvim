@@ -1,21 +1,22 @@
 local fennel = require("fennel")
 local state = {n = 1}
-vim.cmd("\nfunction! FennelReplCallback(text)\n    call luaeval('require(\"fennel-repl\").callback(_A[1], _A[2])', [bufnr(), a:text])\nendfunction")
 local function create_buf()
   local bufnr = vim.api.nvim_create_buf(true, true)
-  vim.api.nvim_command(("autocmd BufEnter <buffer=%d> startinsert"):format(bufnr))
+  vim.api.nvim_create_autocmd("BufEnter", {buffer = bufnr, command = "startinsert"})
   do
-    local _1_ = bufnr
-    vim.api.nvim_buf_set_name(_1_, ("fennel-repl.%d"):format(state.n))
-    vim.api.nvim_buf_set_option(_1_, "buftype", "prompt")
-    vim.api.nvim_buf_set_option(_1_, "complete", ".")
-    vim.api.nvim_buf_set_keymap(_1_, "i", "<C-P>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
-    vim.api.nvim_buf_set_keymap(_1_, "i", "<Up>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
-    vim.api.nvim_buf_set_keymap(_1_, "i", "<C-N>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true, noremap = true})
-    vim.api.nvim_buf_set_keymap(_1_, "i", "<Down>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true, noremap = true})
-    vim.fn.prompt_setcallback(_1_, "FennelReplCallback")
-    vim.fn.prompt_setprompt(_1_, ">> ")
-    vim.api.nvim_buf_set_option(_1_, "filetype", "fennel")
+    vim.api.nvim_buf_set_name(bufnr, ("fennel-repl.%d"):format(state.n))
+    vim.api.nvim_buf_set_option(bufnr, "buftype", "prompt")
+    vim.api.nvim_buf_set_option(bufnr, "complete", ".")
+    vim.api.nvim_buf_set_keymap(bufnr, "i", "<C-P>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    vim.api.nvim_buf_set_keymap(bufnr, "i", "<Up>", "pumvisible() ? '<C-P>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    vim.api.nvim_buf_set_keymap(bufnr, "i", "<C-N>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    vim.api.nvim_buf_set_keymap(bufnr, "i", "<Down>", "pumvisible() ? '<C-N>' : '<C-X><C-L>'", {expr = true, noremap = true})
+    local function _1_(_241)
+      return callback(bufnr, _241)
+    end
+    vim.fn.prompt_setcallback(bufnr, _1_)
+    vim.fn.prompt_setprompt(bufnr, ">> ")
+    vim.api.nvim_buf_set_option(bufnr, "filetype", "fennel")
   end
   return bufnr
 end
@@ -35,33 +36,32 @@ end
 local function find_repl_win(bufnr)
   local _4_
   do
-    local tbl_15_auto = {}
-    local i_16_auto = #tbl_15_auto
+    local tbl_18_auto = {}
+    local i_19_auto = 0
     for _, win in ipairs(vim.api.nvim_list_wins()) do
-      local val_17_auto
+      local val_20_auto
       if (vim.api.nvim_win_get_buf(win) == bufnr) then
-        val_17_auto = win
+        val_20_auto = win
       else
-        val_17_auto = nil
+        val_20_auto = nil
       end
-      if (nil ~= val_17_auto) then
-        i_16_auto = (i_16_auto + 1)
-        do end (tbl_15_auto)[i_16_auto] = val_17_auto
+      if (nil ~= val_20_auto) then
+        i_19_auto = (i_19_auto + 1)
+        do end (tbl_18_auto)[i_19_auto] = val_20_auto
       else
       end
     end
-    _4_ = tbl_15_auto
+    _4_ = tbl_18_auto
   end
-  return (_4_)[1]
+  return _4_[1]
 end
 local function close(bufnr)
   local win = find_repl_win(bufnr)
   do
-    local _7_ = bufnr
-    vim.api.nvim_buf_set_lines(_7_, -1, -1, true, {"[Process exited]"})
-    vim.api.nvim_buf_set_option(_7_, "buftype", "")
-    vim.api.nvim_buf_set_option(_7_, "modified", false)
-    vim.api.nvim_buf_set_option(_7_, "modifiable", false)
+    vim.api.nvim_buf_set_lines(bufnr, -1, -1, true, {"[Process exited]"})
+    vim.api.nvim_buf_set_option(bufnr, "buftype", "")
+    vim.api.nvim_buf_set_option(bufnr, "modified", false)
+    vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
   end
   vim.api.nvim_win_close(win, false)
   state.n = (state.n + 1)
@@ -76,18 +76,15 @@ local function on_values(vals)
   return coroutine.yield(-1, (table.concat(vals, "\9") .. "\n"))
 end
 local function on_error(errtype, err, lua_source)
-  local function _9_()
-    local _8_ = errtype
-    if (_8_ == "Runtime") then
+  local function _7_()
+    if (errtype == "Runtime") then
       return (fennel.traceback(tostring(err), 4) .. "\n")
-    elseif true then
-      local _ = _8_
-      return ("%s error: %s\n"):format(errtype, tostring(err))
     else
-      return nil
+      local _ = errtype
+      return ("%s error: %s\n"):format(errtype, tostring(err))
     end
   end
-  return coroutine.yield(-1, _9_())
+  return coroutine.yield(-1, _7_())
 end
 local function write(bufnr, ...)
   local text = string.gsub(table.concat({...}, " "), "\\n", "\n")
@@ -105,14 +102,14 @@ end
 local function callback(bufnr, text)
   local ok_3f, stack_size, out = coroutine.resume(state.coro, text)
   if (ok_3f and (coroutine.status(state.coro) == "suspended")) then
-    local function _12_()
+    local function _9_()
       if (0 < stack_size) then
         return ".."
       else
         return ">> "
       end
     end
-    vim.fn.prompt_setprompt(bufnr, _12_())
+    vim.fn.prompt_setprompt(bufnr, _9_())
     if (0 > stack_size) then
       write(bufnr, out)
       return coroutine.resume(state.coro)
@@ -137,16 +134,16 @@ local function open(_3fopts)
       env[k] = v
       fenv[k] = v
     end
-    local function _15_(...)
+    local function _12_(...)
       return write(bufnr, ..., "\n")
     end
-    env["print"] = _15_
+    env["print"] = _12_
     fenv["xpcall"] = xpcall_2a
     local repl = setfenv(fennel.repl, fenv)
-    local function _16_()
-      return repl({env = env, allowedGlobals = false, pp = fennel.view, readChunk = read_chunk, onValues = on_values, onError = on_error})
+    local function _13_()
+      return repl({env = env, pp = fennel.view, readChunk = read_chunk, onValues = on_values, onError = on_error, allowedGlobals = false})
     end
-    state.coro = coroutine.create(_16_)
+    state.coro = coroutine.create(_13_)
     coroutine.resume(state.coro)
   else
   end
@@ -156,4 +153,4 @@ local function start(...)
   vim.notify_once(debug.traceback("fennel-repl.nvim: start() is deprecated in favor of open() and will soon be removed", 2), vim.log.levels.WARN)
   return open(...)
 end
-return {start = start, open = open, callback = callback}
+return {start = start, open = open}

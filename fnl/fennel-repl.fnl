@@ -2,19 +2,12 @@
 
 (local state {:n 1})
 
-; Replace this with a Lua function when Lua funcrefs can be used in callbacks
-; (see neovim/neovim#14909)
-(vim.cmd "
-function! FennelReplCallback(text)
-    call luaeval('require(\"fennel-repl\").callback(_A[1], _A[2])', [bufnr(), a:text])
-endfunction")
-
 (fn create-buf []
   (let [bufnr (vim.api.nvim_create_buf true true)]
    (macro imap [bufnr lhs rhs]
      (let [opts {:noremap true :expr true}]
        `(vim.api.nvim_buf_set_keymap ,bufnr :i ,lhs ,rhs ,opts)))
-   (vim.api.nvim_command (: "autocmd BufEnter <buffer=%d> startinsert" :format bufnr))
+   (vim.api.nvim_create_autocmd :BufEnter {:buffer bufnr :command :startinsert})
    (doto bufnr
      (vim.api.nvim_buf_set_name (: "fennel-repl.%d" :format state.n))
      (vim.api.nvim_buf_set_option :buftype :prompt)
@@ -23,7 +16,7 @@ endfunction")
      (imap "<Up>" "pumvisible() ? '<C-P>' : '<C-X><C-L>'")
      (imap "<C-N>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'")
      (imap "<Down>" "pumvisible() ? '<C-N>' : '<C-X><C-L>'")
-     (vim.fn.prompt_setcallback :FennelReplCallback)
+     (vim.fn.prompt_setcallback #(callback bufnr $1))
      (vim.fn.prompt_setprompt ">> ")
      (vim.api.nvim_buf_set_option :filetype :fennel))
    bufnr))
@@ -127,5 +120,4 @@ endfunction")
   (open ...))
 
 {: start
- : open
- : callback}
+ : open}
